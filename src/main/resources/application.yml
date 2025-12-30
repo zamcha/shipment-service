@@ -44,6 +44,11 @@ server:
   port: 8004
 queue:
   mall-shipments:
-    queue: mall-shipment-queue
+    queue:
+    - mall-shipment-queue
+    - order-status-update-queue
     exchange: mall-shipment-exchange
-    routing-key: mall-shipment-routing-key
+    routing-key:
+    - mall-shipment-routing-key
+    - shipment-status-update
+

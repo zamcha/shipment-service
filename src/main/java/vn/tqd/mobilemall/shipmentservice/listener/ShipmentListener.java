@@ -3,44 +3,38 @@ package vn.tqd.mobilemall.shipmentservice.listener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.stereotype.Service;
-import vn.tqd.mobilemall.shipmentservice.dto.OrderCreatedEvent;
-import vn.tqd.mobilemall.shipmentservice.entity.Shipment;
-import vn.tqd.mobilemall.shipmentservice.repository.ShipmentRepository;
+import org.springframework.stereotype.Component;
+import vn.tqd.mobilemall.shipmentservice.dto.ShipmentRequest;
+import vn.tqd.mobilemall.shipmentservice.service.ShipmentService;
+import vn.tqd.mobilemall.shipmentservice.dto.request.CreateShipmentRequest; // DTO của Service
 
-import java.util.UUID;
-
-@Service
-@RequiredArgsConstructor
+@Component
 @Slf4j
+@RequiredArgsConstructor
 public class ShipmentListener {
 
-    private final ShipmentRepository shipmentRepository;
+    private final ShipmentService shipmentService;
 
-    @RabbitListener(queues = "${queue.mall-shipments.queue}")
-    public void handleOrderCreated(OrderCreatedEvent event) {
-        log.info("Nhận đơn hàng từ Mall Service: " + event.getOrderSn());
+    @RabbitListener(queues = "${queue.mall-shipments.queue[0]}")
+    public void receiveShipmentRequest(ShipmentRequest request) {
+        log.info("Nhận yêu cầu tạo vận đơn từ RabbitMQ: OrderID = {}", request.getOrderId());
 
-        // 1. Idempotency Check: Kiểm tra xem đã xử lý đơn này chưa?
-        if (shipmentRepository.existsByOrderId(event.getOrderId())) {
-            log.warn("Đơn hàng {} đã tồn tại vận đơn. Bỏ qua.", event.getOrderId());
-            return;
+        try {
+            // Map từ DTO RabbitMQ sang DTO của Service (nếu khác nhau)
+            CreateShipmentRequest serviceRequest = new CreateShipmentRequest();
+            serviceRequest.setOrderId(request.getOrderId());
+            serviceRequest.setCodAmount(request.getCodAmount());
+            serviceRequest.setReceiverInfo(request.getReceiverInfo());
+            serviceRequest.setNote(request.getNote());
+
+            // Gọi logic tạo vận đơn (Lưu DB)
+            shipmentService.createShipment(serviceRequest);
+
+            log.info("Đã tạo vận đơn thành công!");
+
+        } catch (Exception e) {
+            log.error("Lỗi tạo vận đơn: ", e);
+            // RabbitMQ sẽ tự retry hoặc đẩy vào Dead Letter Queue
         }
-
-        // 2. Tạo Shipment mới
-        Shipment shipment = Shipment.builder()
-                .orderId(event.getOrderId())
-                .orderSn(event.getOrderSn())
-                .receiverName(event.getReceiverName())
-                .receiverPhone(event.getReceiverPhone())
-                .receiverAddress(event.getReceiverAddress())
-                .status(0) // 0: Preparin
-                .trackingNo("SHIP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .build();
-
-        // 3. Lưu vào DB
-        shipmentRepository.save(shipment);
-
-        log.info("Đã tạo vận đơn thành công: " + shipment.getTrackingNo());
     }
 }

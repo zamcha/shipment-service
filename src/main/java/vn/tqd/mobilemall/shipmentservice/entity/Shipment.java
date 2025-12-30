@@ -2,41 +2,52 @@ package vn.tqd.mobilemall.shipmentservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
+import lombok.experimental.SuperBuilder;
+import vn.tqd.mobilemall.shipmentservice.entity.enums.ShipmentStatus;
+import vn.tqd.mobilemall.shipmentservice.utils.BaseEntity;
+import vn.tqd.mobilemall.shipmentservice.utils.JsonMapConverter;
 
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
-@Table(name = "shipment")
-@Data
-@Builder
+@Table(name = "shipments")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Shipment {
+@SuperBuilder
+public class Shipment extends BaseEntity {
+    // Kế thừa BaseEntity để có ID (UUID) và created_at/updated_at
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "shipment_id")
+    private String id;
 
-    @Column(name = "order_id", unique = true, nullable = false)
-    private Integer orderId;
+    @Column(name = "order_id", nullable = false, unique = true)
+    private String orderId;
 
-    @Column(name = "order_sn")
-    private String orderSn;
+    @ManyToOne(fetch = FetchType.EAGER) // Eager để khi lấy shipment thì lấy luôn tên Carrier
+    @JoinColumn(name = "carrier_id", nullable = false)
+    private Carrier carrier;
 
-    // Thông tin người nhận (Copy từ Order sang)
-    private String receiverName;
-    private String receiverPhone;
-    private String receiverAddress;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    @Builder.Default
+    private ShipmentStatus status = ShipmentStatus.READY_TO_PICK;
 
-    // Thông tin vận chuyển
-    private String trackingNo; // Mã vận đơn (VD: GHTK-12345)
+    @Column(name = "shipping_fee", nullable = false)
+    private BigDecimal shippingFee;
 
-    // 0: Preparing, 1: Picked, 2: Delivering, 3: Delivered
-    @Column(columnDefinition = "int default 0")
-    private Integer status;
+    @Column(name = "cod_amount")
+    private BigDecimal codAmount;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
+    @Convert(converter = JsonMapConverter.class)
+    @Column(name = "receiver_info", columnDefinition = "json")
+    private Map<String, Object> receiverInfo;
 
-
+    @Column(name = "estimated_delivery")
+    private LocalDateTime estimatedDelivery;
 }
