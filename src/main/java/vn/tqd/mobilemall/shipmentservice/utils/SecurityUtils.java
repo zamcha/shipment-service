@@ -3,6 +3,7 @@ package vn.tqd.mobilemall.shipmentservice.utils;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.Jwt;
 import vn.tqd.mobilemall.shipmentservice.exception.ResourceNotFoundException;
 
 
@@ -33,5 +34,17 @@ public class SecurityUtils {
         }
 
         throw new ResourceNotFoundException("Không xác định được thông tin người dùng");
+    }
+    public static UserCurrent getCurrentUser(){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String userId = jwt.getClaim("userId");
+        String email = jwt.getClaim("email");
+
+        UserCurrent   userCurrent =  UserCurrent.builder()
+                .userID(userId)
+                .email(email)
+                .build();
+        return userCurrent;
     }
 }

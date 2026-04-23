@@ -17,9 +17,13 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateShipmentRequest implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     @NotBlank(message = "Mã đơn hàng không được để trống")
     private String orderId;
+
+    @NotBlank(message = "errol not found user")
+    private String userId;
 
     @Min(value = 0, message = "Tiền thu hộ (COD) không được là số âm")
     private BigDecimal codAmount;

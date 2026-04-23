@@ -14,7 +14,9 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ShipmentRequest implements Serializable {
+    private static final long serialVersionUID = 1L;
     private String orderId;
+    private String userId;
     private BigDecimal codAmount;          // Tiền thu hộ
     private Map<String, Object> receiverInfo; // Địa chỉ nhận hàng
     private String note;

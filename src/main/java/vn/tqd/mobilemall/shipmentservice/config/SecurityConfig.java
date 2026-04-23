@@ -1,10 +1,12 @@
 package vn.tqd.mobilemall.shipmentservice.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
@@ -21,7 +23,10 @@ import java.util.stream.Collectors;
 
 @EnableWebSecurity
 @Configuration
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+    @Value("${resourceserver.jwt.issuer-uri}")
+    private String issuerUri;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -39,6 +44,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
 
                         ).permitAll()
+                        .requestMatchers("/api/v1/shipments/internal/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated()
                 )
 
@@ -55,9 +62,9 @@ public class SecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         // Địa chỉ JWKS endpoint của usermanager
-        String jwkSetUri = "http://localhost:8888/user-manager/oauth2/jwks";
-        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        return NimbusJwtDecoder.withJwkSetUri(issuerUri).build();
     }
+
 
     /**
      * Converter để đọc claim "roles" trong token và map thành GrantedAuthority
@@ -68,6 +75,7 @@ public class SecurityConfig {
             List<String> roles = jwt.getClaimAsStringList("roles");
             if (roles == null) return List.of();
             return roles.stream()
+                    .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
         });

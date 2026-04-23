@@ -23,6 +23,7 @@ public class ShipmentListener {
             // Map từ DTO RabbitMQ sang DTO của Service (nếu khác nhau)
             CreateShipmentRequest serviceRequest = new CreateShipmentRequest();
             serviceRequest.setOrderId(request.getOrderId());
+            serviceRequest.setUserId(request.getUserId());
             serviceRequest.setCodAmount(request.getCodAmount());
             serviceRequest.setReceiverInfo(request.getReceiverInfo());
             serviceRequest.setNote(request.getNote());

@@ -1,12 +1,17 @@
 package vn.tqd.mobilemall.shipmentservice.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Data
+@Builder
 @NoArgsConstructor
-public class OrderCreatedEvent {
+@AllArgsConstructor
+public class OrderCreatedEvent implements java.io.Serializable{
+    private static final long serialVersionUID = 1L;
     private Integer orderId;
     private String orderSn;
     private String receiverName;

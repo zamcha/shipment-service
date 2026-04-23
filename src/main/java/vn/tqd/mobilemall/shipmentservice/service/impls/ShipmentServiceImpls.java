@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.tqd.mobilemall.shipmentservice.config.RabbitMQConfig;
@@ -19,9 +21,13 @@ import vn.tqd.mobilemall.shipmentservice.mapper.ShipmentMapper;
 import vn.tqd.mobilemall.shipmentservice.repository.CarrierRepository;
 import vn.tqd.mobilemall.shipmentservice.repository.ShipmentRepository;
 import vn.tqd.mobilemall.shipmentservice.service.ShipmentService;
+import vn.tqd.mobilemall.shipmentservice.utils.SecurityUtils;
+import vn.tqd.mobilemall.shipmentservice.utils.UserCurrent;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +61,7 @@ class ShipmentServiceImpl implements ShipmentService {
         // 3. Tạo Entity
         Shipment shipment = Shipment.builder()
                 .orderId(request.getOrderId())
+                .userId(request.getUserId())
                 .carrier(carrier)
                 .status(ShipmentStatus.READY_TO_PICK)
                 .shippingFee(new BigDecimal("30000")) // Hardcode hoặc tính toán
@@ -103,9 +110,29 @@ class ShipmentServiceImpl implements ShipmentService {
     }
 
     @Override
-    public ShipmentResponse getShipmentByOrderId(String orderId) {
+    public ShipmentResponse getShipmentByOrderId(String orderId, List<String> roles) {
+        // 1. Tìm vận đơn
         Shipment shipment = shipmentRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Chưa có vận đơn cho đơn hàng này"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vận đơn cho đơn hàng: " + orderId));
+
+        // 2. Lấy thông tin User hiện tại (từ Token)
+        UserCurrent currentUser = SecurityUtils.getCurrentUser();
+
+        // 3. CHECK QUYỀN (Logic quan trọng)
+        // Nếu User hiện tại KHÔNG PHẢI LÀ ADMIN/MANAGER
+        // VÀ User hiện tại KHÔNG PHẢI CHỦ SỞ HỮU (shipment.userId)
+        // -> Báo lỗi 403 Forbidden
+        boolean isAdmin = roles.contains("ROLE_ADMIN");
+        boolean isManager = roles.contains("ROLE_MANAGER");
+        boolean isOwner = shipment.getUserId().equals(currentUser.getUserID());
+        if (currentUser != null
+                && !isAdmin
+                && !isManager
+                && !currentUser.getUserID().equals(shipment.getUserId())) {
+
+            throw new ResourceNotFoundException("Bạn không có quyền xem vận đơn này");
+        }
+
         return shipmentMapper.toResponse(shipment);
     }
 
@@ -123,7 +150,15 @@ class ShipmentServiceImpl implements ShipmentService {
         shipment.setStatus(ShipmentStatus.CANCELLED);
         shipmentRepository.save(shipment);
 
-        // TODO: Nếu đã bắn sang GHN/GHTK thật thì phải gọi API bên đó để hủy lệnh lấy hàng
+    }
+
+    @Override
+    public Page<ShipmentResponse> getAllShipments(String status, String keyword, Pageable pageable) {
+        if (keyword != null && keyword.trim().isEmpty()) {
+            keyword = null;
+        }
+        return shipmentRepository.findAllByFilter(status, keyword, pageable)
+                .map(shipmentMapper::toResponse);
     }
 
 

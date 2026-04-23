@@ -19,7 +19,8 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public class Shipment extends BaseEntity {
+public class Shipment extends BaseEntity implements java.io.Serializable{
+    private static final long serialVersionUID = 1L;
     // Kế thừa BaseEntity để có ID (UUID) và created_at/updated_at
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -28,7 +29,8 @@ public class Shipment extends BaseEntity {
 
     @Column(name = "order_id", nullable = false, unique = true)
     private String orderId;
-
+    @Column(name = "user_id")
+    private String userId; // Thêm trường này
     @ManyToOne(fetch = FetchType.EAGER) // Eager để khi lấy shipment thì lấy luôn tên Carrier
     @JoinColumn(name = "carrier_id", nullable = false)
     private Carrier carrier;
